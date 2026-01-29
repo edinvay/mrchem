@@ -591,6 +591,10 @@ json GroundStateSolver::optimize(Molecule &mol, FockBuilder &F) {
 
         json_out["cycles"].push_back(json_cycle);
         if (converged) break;
+    
+        previous_grad_E.distribute();
+        previous_preconditioned_grad_E.distribute();
+        direction.distribute();
     }
 
     F.clear();
