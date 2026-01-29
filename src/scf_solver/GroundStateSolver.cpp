@@ -297,7 +297,9 @@ json GroundStateSolver::optimize(Molecule &mol, FockBuilder &F) {
         OrbitalVector grad_E = F.potential()(Phi_n);
         F.clear();
         grad_E = orbital::add(1.0, grad_E, -0.5, Phi_n);
+        grad_E.distribute();
         grad_E = Resolvent(grad_E);
+        grad_E.distribute();
         grad_E = orbital::add(2.0, Phi_n, 4.0, grad_E);
 
         grad_E.distribute();
@@ -345,12 +347,16 @@ json GroundStateSolver::optimize(Molecule &mol, FockBuilder &F) {
             ResolventVector Resolvent_mu( getHelmholtzPrec(), orbital_energy );
 
             preconditioned_grad_E = orbital::rotate(preconditioned_grad_E, U_A_proj.transpose());
-
+            preconditioned_grad_E.distribute();
             auto temp = Resolvent_mu(preconditioned_grad_E);
+            temp.distribute();
             temp = orbital::rotate(temp, one_plus_orbital_energy);
+            temp.distribute();
             preconditioned_grad_E = orbital::add( 0.5, preconditioned_grad_E, 0.5, temp );
+            preconditioned_grad_E.distribute();
             temp.clear();
             preconditioned_grad_E = orbital::rotate(preconditioned_grad_E, U_A_proj);
+            preconditioned_grad_E.distribute();
         }
 
         
@@ -394,6 +400,7 @@ json GroundStateSolver::optimize(Molecule &mol, FockBuilder &F) {
         if (h1_inner_product_preconditioned_grad_E_grad_E <= 0.0) {
             std::cout << "Preconditioning skipped (not a descent direction): " << h1_inner_product_preconditioned_grad_E_grad_E << std::endl;
             preconditioned_grad_E = grad_E;
+            preconditioned_grad_E.distribute();
             h1_inner_product_preconditioned_grad_E_grad_E = grad_E_norm * grad_E_norm;
         }
 
@@ -406,6 +413,7 @@ json GroundStateSolver::optimize(Molecule &mol, FockBuilder &F) {
         if (nIter == 1) {
             // First iteration: steepest descent
             direction = orbital::add(-1.0, preconditioned_grad_E, 0.0, preconditioned_grad_E);
+            direction.distribute();
             descent_directional_product = - h1_inner_product_preconditioned_grad_E_grad_E;
         }
         else {
@@ -431,7 +439,9 @@ json GroundStateSolver::optimize(Molecule &mol, FockBuilder &F) {
                 DoubleMatrix A_proj_dir = mrchem::math_utils::solve_symmetric_sylvester(B_proj_real, C_proj_dir_sym);
 
                 OrbitalVector projected_direction = orbital::rotate(Resolvent_Phi, A_proj_dir);
+                projected_direction.distribute();
                 projected_direction = orbital::add(1.0, direction, -1.0, projected_direction);
+                projected_direction.distribute();
                 // Necessary for Grassmann:
                 if (this->history > 0)
                     projected_direction = orbital::project_to_horizontal(projected_direction, Phi_n, nabla);
@@ -475,6 +485,7 @@ json GroundStateSolver::optimize(Molecule &mol, FockBuilder &F) {
             if (do_restart) {
                 std::cout << "Powell/guarded restart at iteration_index " << nIter << " (reason: " << reason << ")" << std::endl;
                 direction = orbital::add(-1.0, preconditioned_grad_E, 0.0, preconditioned_grad_E);
+                direction.distribute();
                 descent_directional_product = - h1_inner_product_preconditioned_grad_E_grad_E;
                 last_restart_iter = nIter;
             }
@@ -502,8 +513,10 @@ json GroundStateSolver::optimize(Molecule &mol, FockBuilder &F) {
             F.clear();
             // Retraction to Stiefel is Lowdin based:
             Phi_n = orbital::add(1.0, Phi_backup, alpha_trial, direction);
+            Phi_n.distribute();
             // Orthonormalization updates F_mat as a side effect?!
             orbital::orthonormalize(orb_prec, Phi_n, F_mat);
+            Phi_n.distribute();
             // Compute Fock matrix and energy
             if (F.getReactionOperator() != nullptr) F.getReactionOperator()->updateMOResidual(err_t);
             F.setup(orb_prec);
