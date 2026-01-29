@@ -409,6 +409,11 @@ json GroundStateSolver::optimize(Molecule &mol, FockBuilder &F) {
             descent_directional_product = - h1_inner_product_preconditioned_grad_E_grad_E;
         }
         else {
+            previous_grad_E.distribute();
+            previous_preconditioned_grad_E.distribute();
+            direction.distribute();
+            mrcpp::mpi::barrier(mrcpp::mpi::comm_wrk);
+
             // Polak–Ribière coefficient
             OrbitalVector diff_pc_grad = orbital::add(1.0, preconditioned_grad_E, -1.0, previous_preconditioned_grad_E);
             double polak_ribiere = orbital::h1_inner_product(diff_pc_grad, grad_E, nabla);
