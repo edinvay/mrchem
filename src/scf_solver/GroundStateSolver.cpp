@@ -271,7 +271,7 @@ json GroundStateSolver::optimize(Molecule &mol, FockBuilder &F) {
     OrbitalVector previous_grad_E;
     OrbitalVector previous_preconditioned_grad_E;
 
-    double previous_h1_inner_product_preconditioned_grad_E_grad_E;
+    double previous_h1_inner_product_preconditioned_grad_E_grad_E = 0.0;
     int rejectness_count = 0;
     std::vector<double> grad_E_array;
         
@@ -300,6 +300,7 @@ json GroundStateSolver::optimize(Molecule &mol, FockBuilder &F) {
         grad_E = Resolvent(grad_E);
         grad_E = orbital::add(2.0, Phi_n, 4.0, grad_E);
 
+        grad_E.distribute();
         // Evaluate resolvent and its quadratic form
         OrbitalVector Resolvent_Phi = Resolvent(Phi_n);
         ComplexMatrix B_proj1 = orbital::calc_overlap_matrix(Resolvent_Phi, Phi_n);
@@ -313,6 +314,7 @@ json GroundStateSolver::optimize(Molecule &mol, FockBuilder &F) {
         grad_E = orbital::add(1.0, grad_E, -1.0, AR_Phi);
         AR_Phi.clear();
 
+        grad_E.distribute();
         // ==============================
         // Preconditioning
         // ==============================
@@ -357,6 +359,8 @@ json GroundStateSolver::optimize(Molecule &mol, FockBuilder &F) {
         A_proj = mrchem::math_utils::solve_symmetric_sylvester(B_proj_real, C_proj_sym1);
         AR_Phi = orbital::rotate(Resolvent_Phi, A_proj);
         preconditioned_grad_E = orbital::add(1.0, preconditioned_grad_E, -1.0, AR_Phi);
+
+        preconditioned_grad_E.distribute();
 
         // Set the spatial derivatives
         auto &nabla = F.momentum();
@@ -434,7 +438,8 @@ json GroundStateSolver::optimize(Molecule &mol, FockBuilder &F) {
                 direction = orbital::add(-1.0, preconditioned_grad_E, 0.0, preconditioned_grad_E);
                 descent_directional_product = - h1_inner_product_preconditioned_grad_E_grad_E;
             }
-            
+
+            direction.distribute();
 
             // ---------- Robust restart checks ----------
             bool do_restart = false;
