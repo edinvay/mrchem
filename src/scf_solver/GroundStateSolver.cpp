@@ -362,6 +362,17 @@ json GroundStateSolver::optimize(Molecule &mol, FockBuilder &F) {
         auto &nabla = F.momentum();
         nabla.setup(orb_prec);
 
+        // ==============================
+        // Debug: check ownership
+        int rank;
+        MPI_Comm_rank(mrcpp::mpi::comm_wrk, &rank);
+
+        for (int i = 0; i < Phi_n.size(); ++i)
+            if (!mrcpp::mpi::my_func(Phi_n[i]))
+                std::cout << "Rank " << rank
+                        << " does not own Phi[" << i << "]\n";
+        // ==============================
+
         // Necessary for Grassmann: 
         if (this->history > 0)
             preconditioned_grad_E = orbital::project_to_horizontal(preconditioned_grad_E, Phi_n, nabla);

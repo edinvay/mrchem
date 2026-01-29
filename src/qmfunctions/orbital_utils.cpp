@@ -907,14 +907,16 @@ double orbital::h1_inner_product(mrcpp::CompFunction<3> &phi, mrcpp::CompFunctio
     double val = 0.0;
 
     // L2 part
-    val += std::real(mrcpp::dot(phi, psi));
+    if (mrcpp::mpi::my_func(phi) && mrcpp::mpi::my_func(psi))
+        val += std::real(mrcpp::dot(phi, psi));
 
     // Gradient part
     std::vector<Orbital> gphi = nabla(phi);
     std::vector<Orbital> gpsi = nabla(psi);
 
     for (int d = 0; d < 3; ++d)
-        val += std::real(mrcpp::dot(gphi[d], gpsi[d]));
+        if (mrcpp::mpi::my_func(gphi[d]) && mrcpp::mpi::my_func(gpsi[d]))
+            val += std::real(mrcpp::dot(gphi[d], gpsi[d]));
 
     return val;
 }
