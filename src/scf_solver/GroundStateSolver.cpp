@@ -272,7 +272,9 @@ json GroundStateSolver::optimize(Molecule &mol, FockBuilder &F) {
     OrbitalVector previous_preconditioned_grad_E;
 
     double previous_h1_inner_product_preconditioned_grad_E_grad_E;
-
+    int rejectness_count = 0;
+    std::vector<double> grad_E_array;
+        
     int nIter = 0;
     bool converged = false;
     json_out["cycles"] = {};
@@ -370,6 +372,7 @@ json GroundStateSolver::optimize(Molecule &mol, FockBuilder &F) {
         // Check norm of gradient
         auto grad_E_norm = orbital::h1_norm(grad_E, nabla);
         std::cout << "norm(grad_E) = " << grad_E_norm << std::endl;
+        grad_E_array.push_back(grad_E_norm);
 
         // Safeguard: if not descent direction, skip preconditioning
         double h1_inner_product_preconditioned_grad_E_grad_E = orbital::h1_inner_product(preconditioned_grad_E, grad_E, nabla);
@@ -474,9 +477,7 @@ json GroundStateSolver::optimize(Molecule &mol, FockBuilder &F) {
         double Energy_candidate;
         SCFEnergy SCF_Energy_candidate;
         OrbitalVector dPhi_n;
-        //int count = 0;
         while (true) {
-            //count += 1;
             F.clear();
             // Retraction to Stiefel is Lowdin based:
             Phi_n = orbital::add(1.0, Phi_backup, alpha_trial, direction);
@@ -511,6 +512,7 @@ json GroundStateSolver::optimize(Molecule &mol, FockBuilder &F) {
                 std::cout << "Warning: step size too small, stopping search." << std::endl;
                 break;
             }
+            rejectness_count += 1;
         }
 
         // Step-size growth safeguard
@@ -546,7 +548,8 @@ json GroundStateSolver::optimize(Molecule &mol, FockBuilder &F) {
         json_cycle["energy_total"] = E_n.getTotalEnergy();
         json_cycle["energy_update"] = err_p;
 
-        std::cout << "----------------------------------------------------------------------------" << std::endl;
+        //std::cout << "----------------------------------------------------------------------------" << std::endl;
+        std::cout << "============================================================================" << std::endl;
 
         // Rotate orbitals
         if (needLocalization(nIter, converged)) {
@@ -597,12 +600,11 @@ json GroundStateSolver::optimize(Molecule &mol, FockBuilder &F) {
     json_out["converged"] = converged;
 
     // Print energies, gradients, properties for debugging
-    /*
-        std::cout << "this->property:" << std::endl;
-        for (std::size_t i = 0; i < this->property.size(); ++i) {
-            std::cout << "  [" << i << "] = " << this->property[i] << std::endl;
-        }
-    */
+    std::cout << "The amount of Armijo rejections: " << rejectness_count << std::endl;
+    std::cout << "norm(grad_E):"<< std::endl;
+    for (std::size_t i = 0; i < grad_E_array.size(); ++i)
+        std::cout << "norm(grad_E)[" << i << "] = " << grad_E_array[i] << std::endl;
+    
 
     return json_out;
 }
