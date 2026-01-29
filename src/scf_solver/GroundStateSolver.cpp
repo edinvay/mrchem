@@ -600,6 +600,7 @@ json GroundStateSolver::optimize(Molecule &mol, FockBuilder &F) {
         previous_grad_E.distribute();
         previous_preconditioned_grad_E.distribute();
         direction.distribute();
+        mrcpp::mpi::barrier(mrcpp::mpi::comm_wrk);
     }
 
     F.clear();
