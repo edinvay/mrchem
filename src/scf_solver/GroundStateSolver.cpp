@@ -391,6 +391,7 @@ json GroundStateSolver::optimize(Molecule &mol, FockBuilder &F) {
             std::cout << "L2-norm(preconditioned_grad_E) = " << orbital::get_norms(preconditioned_grad_E)[0] << std::endl;
             preconditioned_grad_E = orbital::project_to_horizontal(preconditioned_grad_E, Phi_n, nabla);
         }
+        std::cout << "Any result from Grassmann !?" << std::endl;
  
         // ==============================
         // End Preconditioning
