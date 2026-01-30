@@ -963,26 +963,14 @@ OrbitalVector orbital::project_to_horizontal(OrbitalVector &direction, OrbitalVe
     DoubleVector sq_norms = DoubleVector::Zero(n);
 
     for (int i = 0; i < n; ++i)
-    {
-        double local = 0.0;
-        if (mrcpp::mpi::my_func(Phi[i])) {
-            local = orbital::h1_inner_product(Phi[i], Phi[i], nabla);
-        }
-        MPI_Allreduce(MPI_IN_PLACE, &local, 1, MPI_DOUBLE, MPI_SUM, mrcpp::mpi::comm_wrk);
-        sq_norms(i) = local;
-    }
+        sq_norms(i) = orbital::h1_inner_product(Phi[i], Phi[i], nabla);
 
     // ---- build B matrix ----
     ComplexMatrix B = ComplexMatrix::Zero(n, n);
     for (int i = 0; i < n; ++i)
         for (int j = 0; j < n; ++j)
-        {
-            double local = 0.0;
-            if (mrcpp::mpi::my_func(Phi[i]) && mrcpp::mpi::my_func(direction[j]))
-                local = orbital::h1_inner_product(Phi[i], direction[j], nabla) / (sq_norms(i) + sq_norms(j) + mrcpp::MachineZero);
-            MPI_Allreduce(MPI_IN_PLACE, &local, 1, MPI_DOUBLE, MPI_SUM, mrcpp::mpi::comm_wrk);
-            B(i,j) = local;
-        }
+            B(i,j) = orbital::h1_inner_product(Phi[i], direction[j], nabla)
+                / (sq_norms(i) + sq_norms(j) + mrcpp::MachineZero);
 
     // ---- compute projected direction ----
     ComplexMatrix A = B - B.transpose();
