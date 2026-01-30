@@ -267,9 +267,9 @@ json GroundStateSolver::optimize(Molecule &mol, FockBuilder &F) {
     const double eta_powell = 0.3;         // Powell threshold (tune 0.1..0.3)
     const double polak_max = 5.0;          // cap on beta (safeguard)
 
-    OrbitalVector direction;
-    OrbitalVector previous_grad_E;
-    OrbitalVector previous_preconditioned_grad_E;
+    OrbitalVector direction = orbital::param_copy(Phi_n);
+    OrbitalVector previous_grad_E = orbital::param_copy(Phi_n);
+    OrbitalVector previous_preconditioned_grad_E = orbital::param_copy(Phi_n);
 
     double previous_h1_inner_product_preconditioned_grad_E_grad_E = 0.0;
     int rejectness_count = 0;
@@ -296,7 +296,7 @@ json GroundStateSolver::optimize(Molecule &mol, FockBuilder &F) {
         // Calculate Euclidian gradient
         OrbitalVector grad_E = F.potential()(Phi_n);
         F.clear();
-        grad_E = orbital::add(1.0, grad_E, -0.5, Phi_n);
+        grad_E = orbital::add(-0.5, Phi_n, 1.0, grad_E);
         grad_E.distribute();
         grad_E = Resolvent(grad_E);
         grad_E.distribute();
@@ -389,6 +389,8 @@ json GroundStateSolver::optimize(Molecule &mol, FockBuilder &F) {
 
         // ==============================
         // End Preconditioning
+        // Check norm of gradient
+        std::cout << "L2-norm(grad_E) = " << orbital::get_norms(grad_E)[0] << std::endl;
 
         // Check norm of gradient
         auto grad_E_norm = orbital::h1_norm(grad_E, nabla);

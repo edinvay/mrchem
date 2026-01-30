@@ -873,7 +873,7 @@ double orbital::h1_inner_product(OrbitalVector &Phi, OrbitalVector &Psi, Momentu
         }
     }
 
-    // Check the correct MPI use!!!
+    MPI_Allreduce(MPI_IN_PLACE, &val, 1, MPI_DOUBLE, MPI_SUM, mrcpp::mpi::comm_wrk);
     return val;
 }
 
