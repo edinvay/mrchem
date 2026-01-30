@@ -385,12 +385,15 @@ json GroundStateSolver::optimize(Molecule &mol, FockBuilder &F) {
 
         // Necessary for Grassmann: 
         if (this->history > 0)
+        {
+            // Check norm of gradient
+            std::cout << "L2-norm(grad_E) = " << orbital::get_norms(grad_E)[0] << std::endl;
+            std::cout << "L2-norm(preconditioned_grad_E) = " << orbital::get_norms(preconditioned_grad_E)[0] << std::endl;
             preconditioned_grad_E = orbital::project_to_horizontal(preconditioned_grad_E, Phi_n, nabla);
-
+        }
+ 
         // ==============================
         // End Preconditioning
-        // Check norm of gradient
-        std::cout << "L2-norm(grad_E) = " << orbital::get_norms(grad_E)[0] << std::endl;
 
         // Check norm of gradient
         auto grad_E_norm = orbital::h1_norm(grad_E, nabla);

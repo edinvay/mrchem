@@ -822,7 +822,7 @@ double orbital::l2_inner_product(OrbitalVector &Phi, OrbitalVector &Psi) {
         }
     }
 
-    // Check the correct MPI use!!!
+    MPI_Allreduce(MPI_IN_PLACE, &val, 1, MPI_DOUBLE, MPI_SUM, mrcpp::mpi::comm_wrk);
     return val;
 }
 
@@ -907,17 +907,17 @@ double orbital::h1_inner_product(mrcpp::CompFunction<3> &phi, mrcpp::CompFunctio
     double val = 0.0;
 
     // L2 part
-    //if (mrcpp::mpi::my_func(phi) && mrcpp::mpi::my_func(psi))
+    if (mrcpp::mpi::my_func(phi) && mrcpp::mpi::my_func(psi))
         val += std::real(mrcpp::dot(phi, psi));
 
     // Gradient part
     std::vector<Orbital> gphi = nabla(phi);
     std::vector<Orbital> gpsi = nabla(psi);
-
     for (int d = 0; d < 3; ++d)
-        //if (mrcpp::mpi::my_func(gphi[d]) && mrcpp::mpi::my_func(gpsi[d]))
+        if (mrcpp::mpi::my_func(gphi[d]) && mrcpp::mpi::my_func(gpsi[d]))
             val += std::real(mrcpp::dot(gphi[d], gpsi[d]));
 
+    MPI_Allreduce(MPI_IN_PLACE, &val, 1, MPI_DOUBLE, MPI_SUM, mrcpp::mpi::comm_wrk);
     return val;
 }
 
