@@ -337,9 +337,9 @@ json GroundStateSolver::optimize(Molecule &mol, FockBuilder &F) {
                 phi_i.crop(orb_prec);
         }
 
-        //dx_Phi.clear();
-        //dy_Phi.clear();
-        //dz_Phi.clear();
+        dx_Phi.clear();
+        dy_Phi.clear();
+        dz_Phi.clear();
 
         grad_E = orbital::add(-0.5, Phi_n, 1.0, grad_E, orb_prec);
         ResolventVector Resolvent(helm_prec, Eigen::VectorXd::Constant(Phi_n.size(), -1.0));
@@ -539,7 +539,7 @@ json GroundStateSolver::optimize(Molecule &mol, FockBuilder &F) {
         auto temp = Resolvent_mu(preconditioned_grad_E);
         temp = orbital::rotate(temp, one_plus_orbital_energy, orb_prec);
         preconditioned_grad_E = orbital::add( 0.5, preconditioned_grad_E, 0.5, temp, orb_prec );
-        //temp.clear();
+        temp.clear();
         preconditioned_grad_E = orbital::rotate(preconditioned_grad_E, U_A_proj, orb_prec);
         
         for (auto &phi_i : preconditioned_grad_E)
@@ -558,10 +558,10 @@ json GroundStateSolver::optimize(Molecule &mol, FockBuilder &F) {
 
 
         grad_E_norm = orbital::l2_inner_product(preconditioned_grad_E, one_minus_laplacian_grad_E);
-        println(0, "product(preconditioned_grad_E, grad_E, 10) = " << grad_E_norm);
+        println(0, "product(preconditioned_grad_E, grad_E, 1) = " << grad_E_norm);
         if (lower_preconditioning_boundary > grad_E_norm || grad_E_norm > upper_preconditioning_boundary)
         {
-            println(0, "Preconditioner 1 fails.");
+            println(0, "Preconditioner 1 fails: Stiefel");
         }
 /*
         if (mrcpp::mpi::my_func(preconditioned_grad_E[0]))
@@ -576,140 +576,21 @@ json GroundStateSolver::optimize(Molecule &mol, FockBuilder &F) {
         
         
         grad_E_norm = orbital::l2_inner_product(preconditioned_grad_E, one_minus_laplacian_grad_E);
-        println(0, "product(preconditioned_grad_E, grad_E, 11) = " << grad_E_norm);
+        println(0, "product(preconditioned_grad_E, grad_E, 2) = " << grad_E_norm);
         if (lower_preconditioning_boundary > grad_E_norm || grad_E_norm > upper_preconditioning_boundary)
         {
-            println(0, "Preconditioner 1 fails.");
+            println(0, "Preconditioner 2 fails: Grassmann");
         }
-/*
-        if (mrcpp::mpi::my_func(preconditioned_grad_E[0]))
-        {
-            std::cout << "Preconditioned gradient vector component 3: " << std::endl << preconditioned_grad_E[0].real(0) << std::endl;
-        }
-*/        
-        
-
-/*
-        if (mrcpp::mpi::my_func(one_minus_laplacian_grad_E[0]))
-        {
-            std::cout << "Preconditioned gradient vector component 4a: " << std::endl << one_minus_laplacian_grad_E[0].real(0) << std::endl;
-        }
-*/
-        preconditioned_grad_E = orbital::rotate(one_minus_laplacian_grad_E, U_A_proj.transpose(), orb_prec);
-/*
-        if (mrcpp::mpi::my_func(preconditioned_grad_E[0]))
-        {
-            std::cout << "Preconditioned gradient vector component 4b: " << std::endl << preconditioned_grad_E[0].real(0) << std::endl;
-        }
-*/
-        preconditioned_grad_E = Resolvent_mu(preconditioned_grad_E);
-        preconditioned_grad_E = orbital::rotate(preconditioned_grad_E, 0.5 * U_A_proj, orb_prec);
-
-        for (auto &phi_i : preconditioned_grad_E)
-        {
-            if (mrcpp::mpi::my_func(phi_i))
-            {
-                phi_i.crop(orb_prec);
-            }
-        }
-
-        C_proj_complex = orbital::calc_overlap_matrix(preconditioned_grad_E, Phi_n);
-        C_proj_sym = C_proj_complex.real() + C_proj_complex.real().transpose();
-        A_proj = mrchem::math_utils::solve_symmetric_sylvester(B_proj_real, C_proj_sym);
-        AR_Phi = orbital::rotate(Resolvent_Phi, A_proj, orb_prec);
-        preconditioned_grad_E = orbital::add(1.0, preconditioned_grad_E, -1.0, AR_Phi, orb_prec);
-
-
-        grad_E_norm = orbital::l2_inner_product(preconditioned_grad_E, one_minus_laplacian_grad_E);
-        println(0, "product(preconditioned_grad_E, grad_E, 20) = " << grad_E_norm << " (expensive)");
-        if (lower_preconditioning_boundary > grad_E_norm || grad_E_norm > upper_preconditioning_boundary)
-        {
-            println(0, "Preconditioner 2 fails.");
-        }
-/*
-        if (mrcpp::mpi::my_func(preconditioned_grad_E[0]))
-        {
-            std::cout << "Preconditioned gradient vector component 4: " << std::endl << preconditioned_grad_E[0].real(0) << std::endl;
-        }
-*/
-
-        if (Grassmann)
-            //preconditioned_grad_E = orbital::project_to_horizontal(preconditioned_grad_E, Phi_n, nabla, orb_prec);
-            preconditioned_grad_E = orbital::project_to_horizontal(preconditioned_grad_E, Phi_n, one_minus_laplacian_Phi, orb_prec);
-        
-        
-        grad_E_norm = orbital::l2_inner_product(preconditioned_grad_E, one_minus_laplacian_grad_E);
-        println(0, "product(preconditioned_grad_E, grad_E, 21) = " << grad_E_norm << " (expensive)");
-        if (lower_preconditioning_boundary > grad_E_norm || grad_E_norm > upper_preconditioning_boundary)
-        {
-            println(0, "Preconditioner 2 fails.");
-        }
-/*
-        if (mrcpp::mpi::my_func(preconditioned_grad_E[0]))
-        {
-            std::cout << "Preconditioned gradient vector component 5: " << std::endl << preconditioned_grad_E[0].real(0) << std::endl;
-        }
-*/
-
-        preconditioned_grad_E = orbital::rotate(V_Phi, U_A_proj.transpose(), orb_prec);
-        preconditioned_grad_E = Resolvent_mu(preconditioned_grad_E);
-        preconditioned_grad_E = orbital::rotate(preconditioned_grad_E, U_A_proj, orb_prec);
-        preconditioned_grad_E = orbital::add( 2.0, preconditioned_grad_E, 1.0, Phi_n, orb_prec );
-
-        for (auto &phi_i : preconditioned_grad_E)
-        {
-            if (mrcpp::mpi::my_func(phi_i))
-            {
-                phi_i.crop(orb_prec);
-            }
-        }
-
-        C_proj_complex = orbital::calc_overlap_matrix(preconditioned_grad_E, Phi_n);
-        C_proj_sym = C_proj_complex.real() + C_proj_complex.real().transpose();
-        A_proj = mrchem::math_utils::solve_symmetric_sylvester(B_proj_real, C_proj_sym);
-        AR_Phi = orbital::rotate(Resolvent_Phi, A_proj, orb_prec);
-        preconditioned_grad_E = orbital::add(1.0, preconditioned_grad_E, -1.0, AR_Phi, orb_prec);
-
-
-        grad_E_norm = orbital::l2_inner_product(preconditioned_grad_E, one_minus_laplacian_grad_E);
-        println(0, "product(preconditioned_grad_E, grad_E, 30) = " << grad_E_norm << " (often fails)");
-        if (lower_preconditioning_boundary > grad_E_norm || grad_E_norm > upper_preconditioning_boundary)
-        {
-            println(0, "Preconditioner 3 fails.");
-        }
-/*
-        if (mrcpp::mpi::my_func(preconditioned_grad_E[0]))
-        {
-            std::cout << "Preconditioned gradient vector component 6: " << std::endl << preconditioned_grad_E[0].real(0) << std::endl;
-        }
-*/
-
-        if (Grassmann)
-            //preconditioned_grad_E = orbital::project_to_horizontal(preconditioned_grad_E, Phi_n, nabla, orb_prec);
-            preconditioned_grad_E = orbital::project_to_horizontal(preconditioned_grad_E, Phi_n, one_minus_laplacian_Phi, orb_prec);
-        
-        
-        grad_E_norm = orbital::l2_inner_product(preconditioned_grad_E, one_minus_laplacian_grad_E);
-        println(0, "product(preconditioned_grad_E, grad_E, 31) = " << grad_E_norm << " (often fails)");
-        if (lower_preconditioning_boundary > grad_E_norm || grad_E_norm > upper_preconditioning_boundary)
-        {
-            println(0, "Preconditioner 3 fails.");
-        }
-/*
-        if (mrcpp::mpi::my_func(preconditioned_grad_E[0]))
-        {
-            std::cout << "Preconditioned gradient vector component 7: " << std::endl << preconditioned_grad_E[0].real(0) << std::endl;
-        }
-*/
-
 
         mrcpp::print::separator(0, '-');
 
-        //V_Phi.clear();
-        //Resolvent_Phi.clear();
-        //grad_E.clear();
-        //grad_E1.clear();
-        //preconditioned_grad_E.clear();
+        V_Phi.clear();
+        Resolvent_Phi.clear();
+        grad_E.clear();
+        grad_E1.clear();
+        preconditioned_grad_E.clear();
+        one_minus_laplacian_Phi.clear();
+        one_minus_laplacian_grad_E.clear();
         
         // End printing of gradient norm 
         // ==============================
