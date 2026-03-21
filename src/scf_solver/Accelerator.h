@@ -89,13 +89,16 @@ protected:
     std::vector<ComplexVector> b; ///< Vector of b vectors
     std::vector<ComplexVector> c; ///< Vector of c vectors
 
+public:
     std::deque<OrbitalVector> orbitals;  ///< Orbital history
     std::deque<OrbitalVector> dOrbitals; ///< Orbital update history
+protected:
     std::deque<ComplexMatrix> fock;      ///< Fock history
     std::deque<ComplexMatrix> dFock;     ///< Fock update history
 
     bool verifyOverlap(OrbitalVector &phi);
 
+public:
     // clang-format off
     void push_back(OrbitalVector &phi,
                    OrbitalVector &dPhi,
@@ -103,6 +106,7 @@ protected:
                    ComplexMatrix *dF = nullptr);
     // clang-format on
 
+protected:
     void solveLinearSystem();
     void clearLinearSystem();
     void sortLinearSystem(std::vector<ComplexMatrix> &A_mat, std::vector<ComplexVector> &b_vec);

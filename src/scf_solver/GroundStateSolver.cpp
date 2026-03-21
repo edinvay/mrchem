@@ -254,6 +254,7 @@ json GroundStateSolver::optimize(Molecule &mol, FockBuilder &F) {
 
     auto scaling = std::vector<double>(Phi_n.size(), 1.0);
     KAIN kain(this->history, 0, false, scaling);
+    KAIN projected_kain(this->history, 0, false, scaling);
 
     DoubleVector errors = DoubleVector::Ones(Phi_n.size());
     double err_o = errors.maxCoeff();
@@ -297,6 +298,7 @@ json GroundStateSolver::optimize(Molecule &mol, FockBuilder &F) {
         OrbitalVector Phi_np1 = H(Psi);
         // ==============================
         // Printing of gradient norm
+/*
         
         // Calculate Euclidian gradient
         OrbitalVector grad_E = orbital::param_copy(Phi_n);
@@ -526,12 +528,6 @@ json GroundStateSolver::optimize(Molecule &mol, FockBuilder &F) {
         println(0, "upper_preconditioning_boundary = " << upper_preconditioning_boundary);
 
         preconditioned_grad_E = orbital::deep_copy(grad_E_reference);
-/*
-        if (mrcpp::mpi::my_func(preconditioned_grad_E[0]))
-        {
-            std::cout << "Preconditioned gradient vector component 1: " << std::endl << preconditioned_grad_E[0].real(0) << std::endl;
-        }
-*/
         Eigen::VectorXd orbital_energy = 0.5 * sigma_A_proj;
         Eigen::MatrixXd one_plus_orbital_energy = (Eigen::VectorXd::Ones(orbital_energy.size()) + orbital_energy).asDiagonal();
         ResolventVector Resolvent_mu( getHelmholtzPrec(), orbital_energy );
@@ -563,12 +559,6 @@ json GroundStateSolver::optimize(Molecule &mol, FockBuilder &F) {
         {
             println(0, "Preconditioner 1 fails: Stiefel");
         }
-/*
-        if (mrcpp::mpi::my_func(preconditioned_grad_E[0]))
-        {
-            std::cout << "Preconditioned gradient vector component 2: " << std::endl << preconditioned_grad_E[0].real(0) << std::endl;
-        }
-*/
         const bool Grassmann = true;
         if (Grassmann)
             //preconditioned_grad_E = orbital::project_to_horizontal(preconditioned_grad_E, Phi_n, nabla, orb_prec);
@@ -591,7 +581,7 @@ json GroundStateSolver::optimize(Molecule &mol, FockBuilder &F) {
         preconditioned_grad_E.clear();
         one_minus_laplacian_Phi.clear();
         one_minus_laplacian_grad_E.clear();
-        
+*/
         // End printing of gradient norm 
         // ==============================
         Psi.clear();
@@ -605,6 +595,30 @@ json GroundStateSolver::optimize(Molecule &mol, FockBuilder &F) {
         Phi_np1.clear();
 
         kain.accelerate(orb_prec, Phi_n, dPhi_n);
+
+        OrbitalVector  Phi_zero = orbital::param_copy(Phi_n);
+        OrbitalVector dPhi_zero = orbital::param_copy(Phi_n);
+        
+        auto zero_norms = orbital::get_norms(Phi_zero);
+        auto max_zero = zero_norms.maxCoeff();
+        mrcpp::print::separator(0, '-');
+        println(0, "max_zero = " << max_zero);
+
+        zero_norms = orbital::get_norms(dPhi_n);
+        max_zero = zero_norms.maxCoeff();
+        println(0, "max_zero = " << max_zero);
+
+        OrbitalVector temp = orbital::add(1.0, dPhi_n, -1.0, Phi_zero);
+        zero_norms = orbital::get_norms(temp);
+        max_zero = zero_norms.maxCoeff();
+        println(0, "max_zero = " << max_zero);
+
+        zero_norms = orbital::get_norms(kain.orbitals.back());
+        max_zero = zero_norms.maxCoeff();
+        println(0, "max_zero = " << max_zero);
+        mrcpp::print::separator(0, '-');
+
+        projected_kain.push_back(Phi_n, dPhi_n);
 
         // Compute errors
         errors = orbital::get_norms(dPhi_n);
