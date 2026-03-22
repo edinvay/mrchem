@@ -593,33 +593,26 @@ json GroundStateSolver::optimize(Molecule &mol, FockBuilder &F) {
         // Compute orbital updates
         OrbitalVector dPhi_n = orbital::add(1.0, Phi_np1, -1.0, Phi_n);
         Phi_np1.clear();
+        // ==============================
+        // Equivalent substitute of kain.accelerate(orb_prec, Phi_n, dPhi_n);
+        // ==============================
+        for (size_t i = 0; i < kain.orbitals.size(); ++i)
+        {
+            OrbitalVector history_orbital = orbital::add(1.0, kain.orbitals[i], -1.0, Phi_n);
+            OrbitalVector history_dOrbital = orbital::add(1.0, kain.dOrbitals[i], -1.0, dPhi_n);
+            projected_kain.push_back(
+                history_orbital,
+                history_dOrbital
+            );
+        }
 
-        kain.accelerate(orb_prec, Phi_n, dPhi_n);
+        OrbitalVector  Phi_zero = orbital::add(0.0, Phi_n, 0.0, Phi_n, orb_prec);
+        OrbitalVector dPhi_zero = orbital::add(0.0, dPhi_n, 0.0, dPhi_n, orb_prec);
 
-        OrbitalVector  Phi_zero = orbital::param_copy(Phi_n);
-        OrbitalVector dPhi_zero = orbital::param_copy(Phi_n);
-        
-        auto zero_norms = orbital::get_norms(Phi_zero);
-        auto max_zero = zero_norms.maxCoeff();
-        mrcpp::print::separator(0, '-');
-        println(0, "max_zero = " << max_zero);
-
-        zero_norms = orbital::get_norms(dPhi_n);
-        max_zero = zero_norms.maxCoeff();
-        println(0, "max_zero = " << max_zero);
-
-        OrbitalVector temp = orbital::add(1.0, dPhi_n, -1.0, Phi_zero);
-        zero_norms = orbital::get_norms(temp);
-        max_zero = zero_norms.maxCoeff();
-        println(0, "max_zero = " << max_zero);
-
-        zero_norms = orbital::get_norms(kain.orbitals.back());
-        max_zero = zero_norms.maxCoeff();
-        println(0, "max_zero = " << max_zero);
-        mrcpp::print::separator(0, '-');
-
-        projected_kain.push_back(Phi_n, dPhi_n);
-
+        projected_kain.accelerate(orb_prec, Phi_zero, dPhi_zero);
+        kain.push_back(Phi_n, dPhi_zero);
+        projected_kain.clear();
+        // ==============================
         // Compute errors
         errors = orbital::get_norms(dPhi_n);
         err_o = errors.maxCoeff();
