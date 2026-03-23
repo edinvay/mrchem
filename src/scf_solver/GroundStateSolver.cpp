@@ -29,6 +29,7 @@
 #include "GroundStateSolver.h"
 #include "HelmholtzVector.h"
 #include "KAIN.h"
+#include "HorizontalKAIN.h"
 
 #include "chemistry/Molecule.h"
 #include "qmfunctions/Orbital.h"
@@ -253,7 +254,7 @@ json GroundStateSolver::optimize(Molecule &mol, FockBuilder &F) {
     ComplexMatrix &F_mat = mol.getFockMatrix();
 
     auto scaling = std::vector<double>(Phi_n.size(), 1.0);
-    KAIN kain(this->history, 0, false, scaling);
+    HorizontalKAIN kain(this->history, 0, false, scaling);
     KAIN projected_kain(this->history, 0, false, scaling);
 
     DoubleVector errors = DoubleVector::Ones(Phi_n.size());
